@@ -1,19 +1,27 @@
 from .models import Order
+from .strategies import ShippingCostStrategy
+
 
 class Checkout:
-    def shipping_cost(self, order: Order, service: str) -> float:
-        if service == "standard":
-            if order.subtotal >= 1000:
-                return 0.0
-            return 49.0
+    def __init__(self, strategy: ShippingCostStrategy | None = None):
+        if strategy is not None and not isinstance(strategy, ShippingCostStrategy):
+            raise ValueError(f"Invalid shipping strategy: {strategy}")
+        self.strategy = strategy
 
-        if service == "express":
-            return 99.0 + 12.0 * order.weight_kg
+    def set_strategy(self, strategy: ShippingCostStrategy) -> None:
+        if not isinstance(strategy, ShippingCostStrategy):
+            raise ValueError(f"Invalid shipping strategy: {strategy}")
+        self.strategy = strategy
 
-        if service == "pickup":
-            return 0.0
+    def shipping_cost(self, order: Order, strategy: ShippingCostStrategy | None = None) -> float:
+        if isinstance(order, ShippingCostStrategy) and isinstance(strategy, Order):
+            order, strategy = strategy, order
+        selected_strategy = strategy or self.strategy
+        if not isinstance(selected_strategy, ShippingCostStrategy):
+            raise ValueError(f"Invalid shipping strategy: {selected_strategy}")
+        return selected_strategy.calculate(order)
 
-        raise ValueError(f"Unsupported service: {service}")
-
-    def total(self, order: Order, service: str) -> float:
-        return order.subtotal + self.shipping_cost(order, service)
+    def total(self, order: Order, strategy: ShippingCostStrategy | None = None) -> float:
+        if isinstance(order, ShippingCostStrategy) and isinstance(strategy, Order):
+            order, strategy = strategy, order
+        return order.subtotal + self.shipping_cost(order, strategy)
